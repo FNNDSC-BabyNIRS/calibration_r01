@@ -87,6 +87,9 @@ celerybeat-schedule
 venv/
 ENV/
 
+#Virtual Environmnet 
+py37/
+
 # Spyder project settings
 .spyderproject
 .spyproject
