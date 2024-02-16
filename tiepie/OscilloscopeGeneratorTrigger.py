@@ -6,10 +6,9 @@
 #
 # Find more information on http://www.tiepie.com/LibTiePie .
 
-from __future__ import print_function
 import time
-import os
 import sys
+import csv
 import libtiepie
 from printinfo import *
 
@@ -42,7 +41,7 @@ if scp and gen:
         scp.measure_mode = libtiepie.MM_BLOCK
 
         # Set sample frequency:
-        scp.sample_frequency = 1e6  # 1 MHz
+        scp.sample_rate = 1e6  # 1 MHz
 
         # Set record length:
         scp.record_length = 10000  # 10000 samples
@@ -62,7 +61,7 @@ if scp and gen:
             ch.coupling = libtiepie.CK_DCV  # DC Volt
 
         # Set trigger timeout:
-        scp.trigger_time_out = 1  # 1 s
+        scp.trigger.timeout = 1  # 1 s
 
         # Disable all channel trigger sources:
         for ch in scp.channels:
@@ -92,7 +91,7 @@ if scp and gen:
         gen.offset = 0  # 0 V
 
         # Enable output:
-        gen.output_on = True
+        gen.output_enable = True
 
         # Print oscilloscope info:
         print_device_info(scp)
@@ -114,31 +113,23 @@ if scp and gen:
         gen.stop()
 
         # Disable output:
-        gen.output_on = False
+        gen.output_enable = False
 
         # Get data:
         data = scp.get_data()
 
         # Output CSV data:
-        csv_file = open('OscilloscopeGeneratorTrigger.csv', 'w')
-        try:
-            csv_file.write('Sample')
-            for i in range(len(data)):
-                csv_file.write(';Ch' + str(i + 1))
-            csv_file.write(os.linesep)
+        with open('OscilloscopeGeneratorTrigger.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Sample'] + [f'Ch{i + 1}' for i in range(len(data))])  # Header
             for i in range(len(data[0])):
-                csv_file.write(str(i))
-                for j in range(len(data)):
-                    csv_file.write(';' + str(data[j][i]))
-                csv_file.write(os.linesep)
+                writer.writerow([i] + [data[j][i] for j in range(len(data))])
 
             print()
-            print('Data written to: ' + csv_file.name)
+            print(f'Data written to: {csvfile.name}')
 
-        finally:
-            csv_file.close()
     except Exception as e:
-        print('Exception: ' + e.message)
+        print(f'Exception: {e}')
         sys.exit(1)
 
     # Close oscilloscope:

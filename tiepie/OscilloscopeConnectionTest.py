@@ -4,7 +4,6 @@
 #
 # Find more information on http://www.tiepie.com/LibTiePie .
 
-from __future__ import print_function
 import time
 import sys
 import libtiepie
@@ -24,7 +23,7 @@ scp = None
 for item in libtiepie.device_list:
     if item.can_open(libtiepie.DEVICETYPE_OSCILLOSCOPE):
         scp = item.open_oscilloscope()
-        if scp.has_connection_test:
+        if scp.has_sureconnect:
             break
         else:
             scp = None
@@ -33,31 +32,31 @@ if scp:
     try:
         # Enable all channels that support connection testing:
         for ch in scp.channels:
-            ch.enabled = ch.has_connection_test
+            ch.enabled = ch.has_sureconnect
 
         # Print oscilloscope info:
         print_device_info(scp)
 
         # Start connection test:
-        scp.start_connection_test()
+        scp.start_sureconnect()
 
         # Wait for connection test to complete:
-        while not scp.is_connection_test_completed:
+        while not scp.is_sureconnect_completed:
             time.sleep(0.01)  # 10 ms delay, to save CPU time
 
         # Get data:
-        result = scp.get_connection_test_data()
+        result = scp.get_sureconnect_data()
 
         # Print result:
         print()
         print('Connection test result:')
         ch = 1
         for value in result:
-            print('Ch' + str(ch) + ' = ' + str(value))
+            print(f'Ch{ch} = {value}')
             ch += 1
 
     except Exception as e:
-        print('Exception: ' + e.message)
+        print(f'Exception: {e}')
         sys.exit(1)
 
     # Close oscilloscope:

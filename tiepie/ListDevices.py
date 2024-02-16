@@ -4,9 +4,7 @@
 #
 # Find more information on http://www.tiepie.com/LibTiePie .
 
-from __future__ import print_function
 import sys
-import time
 import libtiepie
 from printinfo import *
 
@@ -24,12 +22,12 @@ if len(libtiepie.device_list) > 0:
     print('Available devices:')
 
     for item in libtiepie.device_list:
-        print('  Name: ' + item.name)
-        print('    Serial number  : ' + str(item.serial_number))
-        print('    Available types: ' + libtiepie.device_type_str(item.types))
+        print(f'  Name: {item.name}')
+        print(f'    Serial number  : {item.serial_number}')
+        print(f'    Available types: {libtiepie.device_type_str(item.types)}')
 
         if item.has_server:
-            print('    Server         : ' + item.server.url + ' (' + item.server.name + ')')
+            print(f'    Server         : {item.server.url} ({item.server.name})')
 else:
     print('No devices found!')
 

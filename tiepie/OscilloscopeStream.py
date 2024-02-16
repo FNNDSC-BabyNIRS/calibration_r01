@@ -4,10 +4,9 @@
 #
 # Find more information on http://www.tiepie.com/LibTiePie .
 
-from __future__ import print_function
 import time
-import os
 import sys
+import csv
 import libtiepie
 from printinfo import *
 
@@ -35,8 +34,8 @@ if scp:
         # Set measure mode:
         scp.measure_mode = libtiepie.MM_STREAM
 
-        # Set sample frequency:
-        scp.sample_frequency = 1e3  # 1 kHz
+        # Set sample rate:
+        scp.sample_rate = 1e3  # 1 kHz
 
         # Set record length:
         scp.record_length = 1000  # 1 kS
@@ -58,20 +57,18 @@ if scp:
         # Start measurement:
         scp.start()
 
-        csv_file = open('OscilloscopeStream.csv', 'w')
-        try:
+        with open('OscilloscopeStream.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+
             # Write csv header:
-            csv_file.write('Sample')
-            for i in range(len(scp.channels)):
-                csv_file.write(';Ch' + str(i + 1))
-            csv_file.write(os.linesep)
+            writer.writerow(['Sample'] + [f'Ch{i + 1}' for i in range(len(scp.channels))])
 
             # Measure 10 chunks:
             print()
             sample = 0
             for chunk in range(10):
                 # Print a message, to inform the user that we still do something:
-                print('Data chunk ' + str(chunk + 1))
+                print(f'Data chunk {chunk + 1}')
 
                 # Wait for measurement to complete:
                 while not (scp.is_data_ready or scp.is_data_overflow):
@@ -86,23 +83,18 @@ if scp:
 
                 # Output CSV data:
                 for i in range(len(data[0])):
-                    csv_file.write(str(sample + i))
-                    for j in range(len(data)):
-                        csv_file.write(';' + str(data[j][i]))
-                    csv_file.write(os.linesep)
+                    writer.writerow([i] + [(data[j][i] if i < len(data[j]) else '') for j in range(len(data))])
 
                 sample += len(data[0])
 
             print()
-            print('Data written to: ' + csv_file.name)
-        finally:
-            csv_file.close()
+            print(f'Data written to: {csvfile.name}')
 
         # Stop stream:
         scp.stop()
 
     except Exception as e:
-        print('Exception: ' + e.message)
+        print(f'Exception: {e}')
         sys.exit(1)
 
     # Close oscilloscope:

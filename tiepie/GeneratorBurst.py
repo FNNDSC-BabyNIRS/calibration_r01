@@ -4,7 +4,6 @@
 #
 # Find more information on http://www.tiepie.com/LibTiePie .
 
-from __future__ import print_function
 import time
 import sys
 import libtiepie
@@ -50,7 +49,7 @@ if gen:
         gen.burst_count = 100  # 100 periods
 
         # Enable output:
-        gen.output_on = True
+        gen.output_enable = True
 
         # Print generator info:
         print_device_info(gen)
@@ -63,10 +62,10 @@ if gen:
             time.sleep(0.01)  # 10 ms delay, to save CPU time.
 
         # Disable output:
-        gen.output_on = False
+        gen.output_enable = False
 
     except Exception as e:
-        print('Exception: ' + e.message)
+        print(f'Exception: {e}')
         sys.exit(1)
 
     # Close generator:
