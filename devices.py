@@ -29,6 +29,41 @@ import socket
 
 
 # Before using this function check the maximum voltage of the DAC device with the following code: 
+
+
+def steps_voltage_dac(total_time_measurement_,time_per_step_,board_num_,channel_out_,ao_range_,voltage_array_,,read_voltage):
+    time = 0; time_recording = [time]; n = 0
+    time_per_step_updated_ = time_per_step_
+    ul.v_out(board_num_, channel_out_, ao_range_, voltage_array_[n])
+    if read_voltage: 
+        voltage_recording = [ul.v_in(board_num_,0,ULRange.BIP20VOLTS)]
+        time_zero = perf_counter_ns()
+        while time < total_time_measurement_:
+                if time > time_per_step_updated_:
+                    n=n+1
+                    ul.v_out(board_num_,channel_out_,ao_range_,voltage_array_[n])
+                    time_per_step_updated_ = time_per_step_ * (n+1)
+
+                value = ul.v_in(board_num_,0,ULRange.BIP20VOLTS)
+                time = (perf_counter_ns()-time_zero) * (10**(-9))
+                voltage_recording = np.append(voltage_recording,value)
+                time_recording = np.append(time_recording,time)
+        return time_recording, voltage_recording
+    
+    else: 
+        time_zero = perf_counter_ns()
+        while time < total_time_measurement_:
+                    if time > time_per_step_updated_:
+                        n=n+1
+                        ul.v_out(board_num_,channel_out_,ao_range_,voltage_array_[n])
+                        time_per_step_updated_ = time_per_step_ * (n+1)
+
+                    value = ul.v_in(board_num_,0,ULRange.BIP20VOLTS)
+                    time = (perf_counter_ns()-time_zero) * (10**(-9))
+                    time_recording = np.append(time_recording,time)
+        return time_recording
+
+
 '''
     use_device_detection = True
     dev_id_list = []
@@ -41,7 +76,7 @@ import socket
     ao_range = ao_info.supported_ranges[0]
     max_voltage = ao_range.range_max
 '''
-def output_voltage_dac(voltage_array,time_per_step,read):
+def output_voltage_dac(voltage_array,time_per_step,read, tiepie_channel_range, tiepie_sample_frequency):
     use_device_detection = True
     dev_id_list = []
     board_num = 0
@@ -57,27 +92,18 @@ def output_voltage_dac(voltage_array,time_per_step,read):
     
     n = 0
     ul.v_out(board_num, channel_out, ao_range, voltage_array[n])
+
     time_per_step_updated = time_per_step
-    total_time_measurement = time_per_step * len(voltage_array)
-    time = 0; time_recording = [time]; voltage_recording = [n]
-    time_zero = perf_counter_ns()
+    total_time_measurement = time_per_step * len(voltage_array) 
 
     if read == 'BlueBox': 
-        while time < total_time_measurement:
-            if time > time_per_step_updated:
-                n=n+1
-                ul.v_out(board_num,channel_out,ao_range,voltage_array[n])
-                time_per_step_updated = time_per_step * (n+1)
-
-            value = ul.v_in(board_num,0,ULRange.BIP20VOLTS)
-            time = (perf_counter_ns()-time_zero) * (10**(-9))
-            voltage_recording = np.append(voltage_recording,value)
-            time_recording = np.append(time_recording,time)
-        return voltage_recording, time_recording
+        
+        time_recording_bb, voltage_recording_bb = steps_voltage_dac(total_time_measurement,time_per_step,board_num,channel_out,ao_range,voltage_array,True)
+        return voltage_recording_bb, time_recording_bb
 
     elif read == 'Tiepie':
         print('Tiepie information')
-        print_library_info()
+        print_library_info() 
         libtiepie.network.auto_detect_enabled = True
 
         # Search for devices:
@@ -97,12 +123,12 @@ def output_voltage_dac(voltage_array,time_per_step,read):
             try:
                 # Set measure mode:
                 scp.measure_mode = libtiepie.MM_BLOCK
-
                 # Set sample frequency:
-                scp.sample_frequency = 1e6  # 1 MHz
+                scp.sample_frequency = tiepie_sample_frequency  # 1 MHz = 1e6
 
                 # Set record length:
-                scp.record_length = 10000  # 10000 samples
+                extra_samples = 100
+                scp.record_length = (scp.sample_frequency*total_time_measurement) + extra_samples
 
                 # Set pre sample ratio:
                 scp.pre_sample_ratio = 0  # 0 %
@@ -113,7 +139,7 @@ def output_voltage_dac(voltage_array,time_per_step,read):
                     ch.enabled = True
 
                     # Set range:
-                    ch.range = 0.4  # 8 V
+                    ch.range = tiepie_channel_range  # 400mv
 
                     # Set coupling:
                     ch.coupling = libtiepie.CK_DCV  # DC Volt
@@ -141,10 +167,12 @@ def output_voltage_dac(voltage_array,time_per_step,read):
                 ch.trigger.hystereses[0] = 0.05  # 5 %
 
                 # Print oscilloscope info:
+
                 print_device_info(scp)
 
                 # Start measurement:
                 scp.start()
+                time_recording_bb = steps_voltage_dac(total_time_measurement,time_per_step,board_num,channel_out,ao_range,voltage_array,False)
 
                 # Wait for measurement to complete:
                 while not scp.is_data_ready:
@@ -153,21 +181,42 @@ def output_voltage_dac(voltage_array,time_per_step,read):
                 # Get data:
                 data = scp.get_data()
 
+                csv_file = open('OscilloscopeBlock_.csv', 'w')
+                try:
+                    csv_file.write('Sample')
+                    for i in range(len(data)):
+                        csv_file.write(';Ch' + str(i + 1))
+                    csv_file.write(os.linesep)
+                    for i in range(len(data[0])):
+                        csv_file.write(str(i))
+                        for j in range(len(data)):
+                            csv_file.write(';' + str(data[j][i]))
+                        csv_file.write(os.linesep)
+
+                    print()
+                    print('Data written to: ' + csv_file.name)
+                    df = pd.read_csv('OscilloscopeBlock_.csv', delimiter=';')  
+
+
+                finally:
+                    csv_file.close()
+
 
             except Exception as e:
                 print('Exception: ' + e.message)
-                sys.exit(1)
+                sys.exit
+
+        else:
+            print('No oscilloscope available with block measurement support!')
+            exit
+
+        exit
+        return df, time_recording_bb
+
+    
 
 
-        while time < total_time_measurement:
-            if time > time_per_step_updated:
-                n=n+1
-                ul.v_out(board_num,channel_out,ao_range,voltage_array[n])
-                time_per_step_updated = time_per_step * (n+1)
-
-            time = (perf_counter_ns()-time_zero) * (10**(-9))
-            time_recording = np.append(time_recording,time)
-        return time_recording
+        
                 
 
 
