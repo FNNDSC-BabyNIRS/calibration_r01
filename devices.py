@@ -244,8 +244,11 @@ def output_current_itc_500():
         raise Exception("Laser didn't turn on")
     
     s.sendall(bytes(':LIMCP:ACT?\n', 'utf-8'))
-    received = str(s.recv(1024), 'utf-8')
+    i_limit_read = str(s.recv(1024), 'utf-8')
+    i_limit_ten_power = int(i_limit_read[-2:-1])
+    i_limit_ampere = float(i_limit_read[10:18])*(10**(-i_limit_ten_power)); i_limit_mili_ampere = np.round(i_limit_ampere*1000,4)
     print('')
+    print('ITC current limit: '+ i_limit_mili_ampere + 'mA')
         
     
     
