@@ -31,7 +31,7 @@ import socket
 # Before using this function check the maximum voltage of the DAC device with the following code: 
 
 
-def steps_voltage_dac(total_time_measurement_,time_per_step_,board_num_,channel_out_,ao_range_,voltage_array_,,read_voltage):
+def steps_voltage_dac(total_time_measurement_,time_per_step_,board_num_,channel_out_,ao_range_,voltage_array_,read_voltage):
     time = 0; time_recording = [time]; n = 0
     time_per_step_updated_ = time_per_step_
     ul.v_out(board_num_, channel_out_, ao_range_, voltage_array_[n])
@@ -76,6 +76,9 @@ def steps_voltage_dac(total_time_measurement_,time_per_step_,board_num_,channel_
     ao_range = ao_info.supported_ranges[0]
     max_voltage = ao_range.range_max
 '''
+
+
+
 def output_voltage_dac(voltage_array,time_per_step,read, tiepie_channel_range, tiepie_sample_frequency):
     use_device_detection = True
     dev_id_list = []
@@ -93,7 +96,6 @@ def output_voltage_dac(voltage_array,time_per_step,read, tiepie_channel_range, t
     n = 0
     ul.v_out(board_num, channel_out, ao_range, voltage_array[n])
 
-    time_per_step_updated = time_per_step
     total_time_measurement = time_per_step * len(voltage_array) 
 
     if read == 'BlueBox': 
@@ -213,6 +215,39 @@ def output_voltage_dac(voltage_array,time_per_step,read, tiepie_channel_range, t
         exit
         return df, time_recording_bb
 
+    
+
+def output_current_itc_500():
+
+    host_ = '169.254.1.80'
+    port_ = 1234
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((host_,port_))
+    # Set Address
+    s.sendall(bytes('++addr 10\n', 'utf-8'))
+    s.sendall(bytes('++addr\n', 'utf-8'))
+    received = str(s.recv(1024), 'utf-8')
+    print('Address ' + received)
+    s.sendall(bytes(':LDPOL?\n', 'utf-8'))
+    received = str(s.recv(1024), 'utf-8')
+    print('Laser Diode Polarity ' + received)
+    s.sendall(bytes(':MODE?\n', 'utf-8'))
+    received = str(s.recv(1024), 'utf-8')
+    print('Operation Mode ' + received)
+    print('')
+    print('Turning Laser On...')
+    s.sendall(bytes(':LASER ON\n', 'utf-8'))
+    s.sendall(bytes(':LASER?\n', 'utf-8'))
+    received = str(s.recv(1024), 'utf-8')
+    print('Laser status '  + received)
+    if 'OFF' in received:
+        raise Exception("Laser didn't turn on")
+    
+    s.sendall(bytes(':LIMCP:ACT?\n', 'utf-8'))
+    received = str(s.recv(1024), 'utf-8')
+    print('')
+        
+    
     
 
 
